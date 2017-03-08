@@ -1,6 +1,6 @@
 # install.packages('zoo')
 # install.packages('quantmod')
-install.packages('PerformanceAnalytics')
+# install.packages('PerformanceAnalytics')
 library(zoo)
 library(quantmod)
 library(PerformanceAnalytics)
@@ -36,20 +36,49 @@ pascalTriangle <- function(h) {
 
 
 ### Calculate VaR
-# Define the symbols
+# Define the symbols and download historical data
 Symbols<-c("AAPL","IBM","GOOG","BP","XOM","COST","GS")
-
+Weights<-c(0.15,0.2,0.2,0.15,0.1,0.15,0.05)
 from.dat <- as.Date("01/01/16", format="%m/%d/%y")
 to.dat <- as.Date("12/31/16", format="%m/%d/%y")
 portfolio<-getSymbols(c("AAPL","IBM","GOOG","BP","XOM","COST","GS"), src="yahoo", from = from.dat, to = to.dat)
-VaR(GOOG,p=0.95,method="historical")
 
-Stocks = lapply(Symbols, function(sym) {
+
+# Calculate the daily return
+Stocks <- lapply(Symbols, function(sym) {
   dailyReturn(na.omit(getSymbols(sym, src="yahoo", from = from.dat, to = to.dat, auto.assign=FALSE)))
 })
-do.call(merge, Stocks)
+Stocks.df <- do.call(merge, Stocks)
+colnames(Stocks.df) <- c("AAPL","IBM","GOOG","BP","XOM","COST","GS")
+
+# Portfolio Return
+portfolio.r <- data.frame(Stocks.df %*% Weights)
+colnames(portfolio.r) <- "portfolio return"
+rownames(portfolio.r) <- rownames(Stocks.df)
+
+portfolio.r <- data.frame(apply(Stocks.df,1, function(x) x%*%Weights))
+colnames(portfolio.r) <- "portfolio return"
+# data.frame(mapply(`*`,Stocks.df,Weights))
+
+
+VaR(portfolio.r,p=0.95,method="historical")
+ETL(portfolio.r,p=0.95,method="historical")
+
+VaR(portfolio.r,p=0.95,method="gaussian")
+ETL(portfolio.r,p=0.95,method="gaussian")
+
+### Assumption we assume that we use Sharpe Ratio as the single indicator to optimze the portfolio weight
+edhec[, 6]
+
+SharpeRatio(as.xts(portfolio.r[,,drop=FALSE]), Rf=0, FUN="StdDev")
+SharpeRatio.annualized(as.xts(portfolio.r[,,drop=FALSE]), Rf=0)
+
+
+x<-edhec[, 6]
+y<-as.xts(portfolio.r[,,drop=FALSE])
+
 
 Stocks = lapply(Symbols, function(x) x)
-
-
+data(edhec)
+VaR(edhec,p=0.95,method="historical")
 
