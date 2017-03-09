@@ -120,22 +120,61 @@ opt_weight_2 <- portfolio.rebalanced_2$opt_rebalancing
 setwd("C:/q/practice")
 pos <- read.csv(file='pos.csv',head=TRUE,sep=",")
 
-### Calculate the net position per each user
+### Q1 Calculate the net position per each user
 net_pos <- pos %>% 
                 group_by(user) %>%
                 summarise(net_pos = sum(pos))
-
-### Calculate the boxed position
+### Q2 Calculate the boxed position
 box_pos <- pos %>% spread(sym, pos)
-
 box_A_list <- colnames(box_pos)[!is.na(colnames(box_pos)[box_pos[1,]*box_pos[2,]<0])]
 box_B_list <- colnames(box_pos)[!is.na(colnames(box_pos)[box_pos[3,]*box_pos[4,]<0])]
 box_C_list <- colnames(box_pos)[!is.na(colnames(box_pos)[box_pos[5,]*box_pos[6,]<0])]
 box_D_list <- colnames(box_pos)[!is.na(colnames(box_pos)[box_pos[7,]*box_pos[8,]<0])]
 box_E_list <- colnames(box_pos)[!is.na(colnames(box_pos)[box_pos[9,]*box_pos[10,]<0])]
+length(box_E_list) = length(box_D_list) = length(box_C_list) = length(box_B_list) = length(box_A_list)
+total_list <- cbind(box_A_list,box_B_list,box_C_list,box_D_list,box_E_list)
+### Q3 Calcualte journal and trade columns
+trd <- read.csv(file='trd.csv',head=TRUE,sep=",")
+trd <- trd[order(trd['sym']),]
 
-rm(list=ls())
+trd_qty <- trd %>% spread(sym, qty)
+# Sperate the negative and positive value and sum up, then append them to former trd_qty data frame
+row_append <- as.matrix(vapply(trd_qty[,-1], function(x)  c(sum(x[x>0], na.rm=TRUE), -sum(x[x<=0], na.rm=TRUE)), double(2L)))
+trd_qty <- rbind(trd_qty[,-1],row_append[1:2,])
+row_trd <- vapply(trd_qty[6:7,], function(x) min(x), double(1L))
+trd_qty <- rbind(trd_qty, row_trd)
+# We make an assumption that when the order cannot be fully executed, we use pro rata to split the executed order
+trd_qty[9,]<-lapply(trd_qty, function(X) X[8]/X[6])
+trd_qty[10,]<-lapply(trd_qty, function(X) X[8]/X[7])
+new_trd_qty <- cbind(user = c('A','B','C','D','E','po','neg','trd','po_ratio','neg_ratio'),trd_qty)
+ratio.df <- new_trd_qty[9:10,] %>% gather(sym, qty, `1003.T`:`1984.T`)
+# Implement the calculation: positive order * po_ratio and negative order * neg_ratio
+for (i in (1:length(trd$sym))){
+  if (trd$qty[i]>0){
+    trd$jrnl[i]=trd$qty[i]*ratio.df[(ratio.df$sym==trd$sym[i]),]$qty[1]
+    trd$trd[i]=trd$qty[i] - trd$jrnl[i]
+  }
+  else if (trd$qty[i]<0){
+    trd$jrnl[i]=trd$qty[i]*ratio.df[(ratio.df$sym==trd$sym[i]),]$qty[2]
+    trd$trd[i]=trd$qty[i] - trd$jrnl[i]
+  }
+}
+### Q4 Find the total quantity to trade
+total_trd <- trd %>% group_by(sym) %>% summarise(Total_trd = sum(trd))
 
+### Q5 Final position
+# We make the assumption that, the final position should be total position for each sym plus the total traded order
+total_pos_user <- pos %>% group_by(sym,user) %>% summarise(Total_pos = sum(pos))
+total_trd_user <- trd %>% group_by(sym,user) %>% summarise(Total_trd = sum(trd))
+final_pos <- merge(x=total_pos_user,y=total_trd_user, by=c("sym","user"),all = TRUE)
+final_pos[is.na(final_pos)]<-0
+final_pos$final_pos <- final_pos$Total_pos+final_pos$Total_trd
+
+### Q6 The question description is very vague, and we could check the solution quality from serveral perspective:
+### First is the data quality, we should cross check our data from mutli-sources. Second is the defination, we should 
+### check the definition of journal and trades, and compare our theoretical result with the market data. Third, we shoul loose
+### our assumption and make our analysis close to the practice. For example, we cannot assume that all the orders arrive at
+### the same time. 
 
 
 
