@@ -23,10 +23,10 @@ library(reshape2)
 ### Import dataframe
 AB<-data.frame(id=seq(10,80,by=10),anest=c("baker","baker",rep("dow",6)), start=c("08:00","09:00","09:00","08:00","10:00","12:30","13:30","18:00"),end=c("11:00","13:00","15:30","13:30","11:30","13:30","14:30","19:00"))
 ### Construct AB_2 to store the intersection information (s) 
-AB$s=0;AB$w=NULL
 AB_1=melt(AB,id.vars =c("id",'anest'))
 ac=as.integer(AB_1$variable)
 ac[ac==2]=-1
+AB$s=0;AB$w=NULL
 A_1<-cbind(AB_1,ac)[AB$anest=='dow',]
 B_1<-cbind(AB_1,ac)[AB$anest=='baker',]
 A_2<-A_1[order(A_1[,4],A_1[,1]),];A_2$stack=cumsum(c(A_2$ac))
@@ -133,10 +133,10 @@ box_D_list <- colnames(box_pos)[!is.na(colnames(box_pos)[box_pos[7,]*box_pos[8,]
 box_E_list <- colnames(box_pos)[!is.na(colnames(box_pos)[box_pos[9,]*box_pos[10,]<0])]
 length(box_E_list) = length(box_D_list) = length(box_C_list) = length(box_B_list) = length(box_A_list)
 total_list <- cbind(box_A_list,box_B_list,box_C_list,box_D_list,box_E_list)
+
 ### Q3 Calcualte journal and trade columns
 trd <- read.csv(file='trd.csv',head=TRUE,sep=",")
 trd <- trd[order(trd['sym']),]
-
 trd_qty <- trd %>% spread(sym, qty)
 # Sperate the negative and positive value and sum up, then append them to former trd_qty data frame
 row_append <- as.matrix(vapply(trd_qty[,-1], function(x)  c(sum(x[x>0], na.rm=TRUE), -sum(x[x<=0], na.rm=TRUE)), double(2L)))
@@ -159,6 +159,7 @@ for (i in (1:length(trd$sym))){
     trd$trd[i]=trd$qty[i] - trd$jrnl[i]
   }
 }
+
 ### Q4 Find the total quantity to trade
 total_trd <- trd %>% group_by(sym) %>% summarise(Total_trd = sum(trd))
 
