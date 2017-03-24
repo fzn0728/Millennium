@@ -1,3 +1,8 @@
+update.packages()
+install.packages('plotly')
+install.packages("Rmosek", type="source", INSTALL_opts="--no-multiarch", 
+                 repos="http://download.mosek.com/R/8")
+
 library(PortfolioAnalytics)
 library(quantmod)
 library(PerformanceAnalytics)
